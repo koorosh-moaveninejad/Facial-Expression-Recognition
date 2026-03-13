@@ -1,0 +1,2 @@
+# Facial-Expression-Recognition
+This repository contains implementations of several methods for Facial Expression Recognition, including preprocessing, feature extraction, and model training.
