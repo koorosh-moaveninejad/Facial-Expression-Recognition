@@ -1,0 +1,17 @@
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.h5
+*.pb
+*.tflite
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.png
+*.jpg
+*.jpeg
+*.bmp
+.DS_Store
+Thumbs.db
