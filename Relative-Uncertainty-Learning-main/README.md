@@ -50,31 +50,5 @@ python main.py --raf_path '../dataset/raf-basic' --label_path '../dataset/raf-ba
 
 
 
-## Others
 
-
-**Citation**
-
-If you find our code useful, please consider citing our paper
-
-```shell
-@article{zhang2021relative,
-  title={Relative Uncertainty Learning for Facial Expression Recognition},
-  author={Zhang, Yuhang and Wang, Chengrui and Deng, Weihong},
-  journal={Advances in Neural Information Processing Systems},
-  volume={34},
-  pages={17616--17627},
-  year={2021}
-}
-```
-
-**Acknowledgments**
-
-Our work is based on the following works, thanks for their code and pretrained model:
-
-https://github.com/kaiwang960112/Self-Cure-Network
-
-https://github.com/Ontheway361/dul-pytorch
-
-https://github.com/amirhfarzaneh/dacl
 
