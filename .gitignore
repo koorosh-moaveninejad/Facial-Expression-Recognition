@@ -13,5 +13,6 @@
 *.jpg
 *.jpeg
 *.bmp
+*.pyc
 .DS_Store
 Thumbs.db
