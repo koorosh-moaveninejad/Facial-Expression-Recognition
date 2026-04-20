@@ -27,8 +27,8 @@ class RafDataset(data.Dataset):
         # Example:
         # train_00001_aligned.jpg,4
         # test_00001_aligned.jpg,2
-        image_col = 'image_name'
-        label_col = 'label_index'
+        image_col = 'image'
+        label_col = 'label'
 
         if image_col not in df.columns or label_col not in df.columns:
             raise ValueError(
