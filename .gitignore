@@ -9,10 +9,10 @@
 *.tar
 *.tar.gz
 *.rar
-*.png
-*.jpg
-*.jpeg
-*.bmp
+# *.png
+# *.jpg
+# *.jpeg
+# *.bmp
 *.pyc
 .DS_Store
 Thumbs.db
