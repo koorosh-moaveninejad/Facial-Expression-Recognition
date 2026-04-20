@@ -30,7 +30,7 @@ def setup_seed(seed):
 def mixup_data(x, y, att, use_cuda=True):
     batch_size = x.size()[0]
     if use_cuda:
-        index = torch.randperm(batch_size).cuda()
+        index = torch.randperm(batch_size, device= x.device)
     else:
         index = torch.randperm(batch_size)
     att1 = att / (att + att[index])
