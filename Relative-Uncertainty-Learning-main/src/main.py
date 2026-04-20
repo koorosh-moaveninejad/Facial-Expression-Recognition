@@ -1,41 +1,50 @@
-# -*- coding: utf-8 -*-
 
-import os
-import cv2
-import csv
-import math
-import random
-import numpy as np
-import pandas as pd
 import argparse
-
 import torch
 import torch.nn as nn
 from torchvision import transforms
-import torchvision.models as models
-import torch.utils.data as data
-import torch.nn.functional as F
 
 from dataset import RafDataset
 from rul import res18feature
 from utils import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--raf_path', type=str, default='../../raf-basic',help='raf_dataset_path')
-parser.add_argument('--pretrained_backbone_path', type=str, default='../../affectnet_baseline/resnet18_msceleb.pth', help='pretrained_backbone_path')
-parser.add_argument('--label_path', type=str, default='../../raf-basic/EmoLabel/list_patition_label.txt', help='label_path')
-parser.add_argument('--workers', type=int, default=4, help='number of workers')
-parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
-parser.add_argument('--epochs', type=int, default=60, help='number of epochs')
-parser.add_argument('--out_dimension', type=int, default=64, help='feature dimension')
+
+parser.add_argument('--raf_path', type=str, default='../../DATASET',
+                    help='Root path of dataset folder')
+
+parser.add_argument('--train_label_path', type=str, default='../../DATASET/train_labels.csv',
+                    help='Path to train_labels.csv')
+
+parser.add_argument('--test_label_path', type=str, default='../../DATASET/test_labels.csv',
+                    help='Path to test_labels.csv')
+
+parser.add_argument('--pretrained_backbone_path', type=str,
+                    default='../pretrained_model/resnet18_msceleb.pth',
+                    help='Path to pretrained backbone weights')
+
+parser.add_argument('--workers', type=int, default=4,
+                    help='Number of dataloader workers')
+
+parser.add_argument('--batch_size', type=int, default=64,
+                    help='Batch size')
+
+parser.add_argument('--epochs', type=int, default=60,
+                    help='Number of epochs')
+
+parser.add_argument('--out_dimension', type=int, default=64,
+                    help='Feature dimension')
+
 args = parser.parse_args()
 
 
 def train():
     setup_seed(0)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     res18 = res18feature(args)
     fc = nn.Linear(args.out_dimension, 7)
-
 
     data_transforms = transforms.Compose([
         transforms.ToPILImage(),
@@ -56,44 +65,52 @@ def train():
     train_dataset = RafDataset(args, phase='train', transform=data_transforms)
     test_dataset = RafDataset(args, phase='test', transform=data_transforms_val)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=args.batch_size,
-                                               shuffle=True,
-                                               num_workers=args.workers,
-                                               pin_memory=True)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.workers,
+        pin_memory=True
+    )
 
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size,
-                                              shuffle=False,
-                                              num_workers=args.workers,
-                                              pin_memory=True)
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=True
+    )
 
-    res18.cuda()
-    fc.cuda()
+    res18 = res18.to(device)
+    fc = fc.to(device)
 
     params = res18.parameters()
     params2 = fc.parameters()
 
-
     optimizer = torch.optim.Adam([
         {'params': params},
-        {'params': params2, 'lr': 0.002}], lr=0.0002, weight_decay=1e-4)
+        {'params': params2, 'lr': 0.002}
+    ], lr=0.0002, weight_decay=1e-4)
+
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
-
-
-    best_acc = 0
+    best_acc = 0.0
     best_epoch = 0
+
     for i in range(1, args.epochs + 1):
         running_loss = 0.0
         iter_cnt = 0
         correct_sum = 0
+
         res18.train()
+        fc.train()
 
         for batch_i, (imgs, labels, indexes) in enumerate(train_loader):
-            imgs = imgs.cuda()
-            labels = labels.cuda()
+            imgs = imgs.to(device)
+            labels = labels.to(device)
 
             optimizer.zero_grad()
+
             mixed_x, y_a, y_b, att1, att2 = res18(imgs, labels, phase='train')
             outputs = fc(mixed_x)
 
@@ -109,27 +126,27 @@ def train():
 
             correct_num = torch.eq(predicts, labels).sum()
             correct_sum += correct_num
-            running_loss += loss
+            running_loss += loss.item()
 
         scheduler.step()
 
         running_loss = running_loss / iter_cnt
+        acc = correct_sum.float() / float(len(train_dataset))
 
-        acc = correct_sum.float() / float(train_dataset.__len__())
         print('Epoch : %d, train_acc : %.4f, train_loss: %.4f' % (i, acc, running_loss))
 
         with torch.no_grad():
             res18.eval()
+            fc.eval()
 
             running_loss = 0.0
             iter_cnt = 0
             correct_sum = 0
             data_num = 0
 
-
             for batch_i, (imgs, labels, indexes) in enumerate(test_loader):
-                imgs = imgs.cuda()
-                labels = labels.cuda()
+                imgs = imgs.to(device)
+                labels = labels.to(device)
 
                 outputs = res18(imgs, labels, phase='test')
                 outputs = fc(outputs)
@@ -142,7 +159,7 @@ def train():
                 correct_num = torch.eq(predicts, labels).sum()
                 correct_sum += correct_num
 
-                running_loss += loss
+                running_loss += loss.item()
                 data_num += outputs.size(0)
 
             running_loss = running_loss / iter_cnt
@@ -151,12 +168,13 @@ def train():
             if test_acc > best_acc:
                 best_acc = test_acc
                 best_epoch = i
-                if best_acc >= 0.888:
-                    torch.save({'model_state_dict': res18.state_dict(),
-                                'fc_state_dict': fc.state_dict()},
-                               "acc_888.pth")
-                    print('Model saved.')
 
+                if best_acc >= 0.888:
+                    torch.save({
+                        'model_state_dict': res18.state_dict(),
+                        'fc_state_dict': fc.state_dict()
+                    }, "acc_888.pth")
+                    print('Model saved.')
 
             print('Epoch : %d, test_acc : %.4f, test_loss: %.4f' % (i, test_acc, running_loss))
 
