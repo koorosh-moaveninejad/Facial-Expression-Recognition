@@ -3,7 +3,7 @@ import argparse
 import torch
 import torch.nn as nn
 from torchvision import transforms
-
+from tqdm import tqdm
 from dataset import RafDataset
 from rul import res18feature
 from utils import *
@@ -144,7 +144,8 @@ def train():
             correct_sum = 0
             data_num = 0
 
-            for batch_i, (imgs, labels, indexes) in enumerate(test_loader):
+            train_bar = tqdm(train_loader, desc=f"Epoch {i}/{args.epochs} [Train]", leave=False)
+            for batch_i, (imgs, labels, indexes) in enumerate(train_bar):
                 imgs = imgs.to(device)
                 labels = labels.to(device)
 
