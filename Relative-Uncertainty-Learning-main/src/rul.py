@@ -14,7 +14,8 @@ class res18feature(nn.Module):
 
         #'affectnet_baseline/resnet18_msceleb.pth'
         res18 = ResNet(block=BasicBlock, n_blocks=[2, 2, 2, 2], channels=[64, 128, 256, 512], output_dim=1000)
-        msceleb_model = torch.load(args.pretrained_backbone_path)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        msceleb_model = torch.load(args.pretrained_backbone_path, map_location=device)
         state_dict = msceleb_model['state_dict']
         res18.load_state_dict(state_dict, strict=False)
 
