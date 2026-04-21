@@ -115,6 +115,7 @@ def train():
         res18.train()
         fc.train()
 
+        train_bar = tqdm(train_loader, desc=f"Epoch {i}/{args.epochs} [Train]")
         for batch_i, (imgs, labels, indexes) in enumerate(train_loader):
             imgs = imgs.to(device)
             labels = labels.to(device)
