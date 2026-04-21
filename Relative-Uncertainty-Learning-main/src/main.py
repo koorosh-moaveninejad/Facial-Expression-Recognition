@@ -135,6 +135,9 @@ def train():
             iter_cnt += 1
             running_loss += loss.item()
 
+            # update progress bar
+            train_bar.set_postfix(loss=f"{loss.item():.4f}")
+
         scheduler.step()
         running_loss /= iter_cnt
 
