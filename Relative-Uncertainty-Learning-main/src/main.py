@@ -7,6 +7,7 @@ from tqdm import tqdm
 from dataset import RafDataset
 from rul import res18feature
 from utils import *
+from utils import evaluate
 
 parser = argparse.ArgumentParser()
 
@@ -64,6 +65,7 @@ def train():
 
     train_dataset = RafDataset(args, phase='train', transform=data_transforms)
     test_dataset = RafDataset(args, phase='test', transform=data_transforms_val)
+    train_dataset_eval = RafDataset(args, phase='train', basic_aug=False, transform=data_transforms_val)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
@@ -71,6 +73,14 @@ def train():
         shuffle=True,
         num_workers=args.workers,
         pin_memory=True
+    )
+
+    train_eval_loader = torch.utils.data.DataLoader(
+        train_dataset_eval,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=(device.type == 'cuda')
     )
 
     test_loader = torch.utils.data.DataLoader(
@@ -131,9 +141,13 @@ def train():
         scheduler.step()
 
         running_loss = running_loss / iter_cnt
-        acc = correct_sum.float() / float(len(train_dataset))
+        print('Epoch : %d, train_loss: %.4f' % (i, running_loss))
 
-        print('Epoch : %d, train_acc : %.4f, train_loss: %.4f' % (i, acc, running_loss))
+        train_eval_loss, train_eval_acc = evaluate(res18, fc, train_eval_loader, device)
+        test_loss, test_acc = evaluate(res18, fc, test_loader, device)
+
+        print('Epoch : %d, train_eval_acc : %.4f, train_eval_loss: %.4f' % (i, train_eval_acc, train_eval_loss))
+        print('Epoch : %d, test_acc : %.4f, test_loss: %.4f' % (i, test_acc, test_loss))
 
         with torch.no_grad():
             res18.eval()
@@ -155,10 +169,7 @@ def train():
                 loss = nn.CrossEntropyLoss()(outputs, labels)
 
                 iter_cnt += 1
-                _, predicts = torch.max(outputs, 1)
 
-                correct_num = torch.eq(predicts, labels).sum()
-                correct_sum += correct_num
 
                 running_loss += loss.item()
                 data_num += outputs.size(0)
@@ -170,6 +181,7 @@ def train():
                 best_acc = test_acc
                 best_epoch = i
 
+                # Criteria to save the trained model
                 if best_acc >= 0.888:
                     torch.save({
                         'model_state_dict': res18.state_dict(),

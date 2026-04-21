@@ -42,3 +42,37 @@ def mixup_data(x, y, att, use_cuda=True):
 #add-up loss
 def mixup_criterion(y_a, y_b):
     return lambda criterion, pred:  0.5 *  criterion(pred, y_a) + 0.5 * criterion(pred, y_b)
+
+
+def evaluate(model, fc, loader, device):
+    model.eval()
+    fc.eval()
+
+    running_loss = 0.0
+    iter_cnt = 0
+    correct_sum = 0
+    data_num = 0
+
+    criterion = nn.CrossEntropyLoss()
+
+    with torch.no_grad():
+        for imgs, labels, indexes in loader:
+            imgs = imgs.to(device)
+            labels = labels.to(device)
+
+            features = model(imgs, labels, phase='test')
+            outputs = fc(features)
+
+            loss = criterion(outputs, labels)
+
+            _, predicts = torch.max(outputs, 1)
+            correct_sum += torch.eq(predicts, labels).sum().item()
+
+            running_loss += loss.item()
+            data_num += labels.size(0)
+            iter_cnt += 1
+
+    avg_loss = running_loss / iter_cnt
+    acc = correct_sum / data_num
+
+    return avg_loss, acc
