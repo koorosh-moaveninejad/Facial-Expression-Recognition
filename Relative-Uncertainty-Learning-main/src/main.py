@@ -8,6 +8,7 @@ from dataset import RafDataset
 from rul import res18feature
 from utils import *
 from utils import evaluate
+import os
 
 parser = argparse.ArgumentParser()
 
