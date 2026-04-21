@@ -2,6 +2,7 @@ import torch
 import cv2
 import numpy as np
 import random
+import torch.nn as nn
 
 #add gaussian noise
 def add_g(image_array, mean=0.0, var=30):
