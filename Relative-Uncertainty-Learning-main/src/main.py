@@ -1,5 +1,8 @@
-
 import argparse
+import csv
+import json
+import os
+import time
 import torch
 import torch.nn as nn
 from torchvision import transforms
@@ -7,8 +10,13 @@ from tqdm import tqdm
 from dataset import RafDataset
 from rul import res18feature
 from utils import *
-from utils import evaluate
-import os
+
+from sklearn.metrics import (
+    confusion_matrix,
+    classification_report,
+    precision_recall_fscore_support,
+    accuracy_score
+)
 
 parser = argparse.ArgumentParser()
 
@@ -44,6 +52,29 @@ def train():
     setup_seed(0)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    os.makedirs("../checkpoints", exist_ok=True)
+    os.makedirs("../reports", exist_ok=True)
+
+    with open("../reports/config.json", "w") as f:
+        json.dump(vars(args), f, indent=4)
+
+    metrics_path = "../reports/metrics.csv"
+    with open(metrics_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "epoch",
+            "train_loss",
+            "train_eval_loss",
+            "train_eval_acc",
+            "test_loss",
+            "test_acc",
+            "acc_gap",
+            "loss_gap",
+            "lr",
+            "epoch_time_sec",
+            "best_test_acc_so_far"
+        ])
 
     res18 = res18feature(args)
     fc = nn.Linear(args.out_dimension, 7)
@@ -103,12 +134,11 @@ def train():
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
-    os.makedirs("checkpoints", exist_ok=True)
-
     best_acc = 0.0
     best_epoch = 0
 
     for i in range(1, args.epochs + 1):
+        epoch_start = time.time()
         running_loss = 0.0
         iter_cnt = 0
 
@@ -134,44 +164,95 @@ def train():
 
             iter_cnt += 1
             running_loss += loss.item()
-
-            # update progress bar
             train_bar.set_postfix(loss=f"{loss.item():.4f}")
 
         scheduler.step()
         running_loss /= iter_cnt
 
-        print('Epoch : %d, train_loss: %.4f' % (i, running_loss))
-
         train_eval_loss, train_eval_acc = evaluate(res18, fc, train_eval_loader, device)
         test_loss, test_acc = evaluate(res18, fc, test_loader, device)
 
+        acc_gap = train_eval_acc - test_acc
+        loss_gap = test_loss - train_eval_loss
+        current_lr = optimizer.param_groups[0]['lr']
+        epoch_time = time.time() - epoch_start
+
+        print('Epoch : %d, train_loss: %.4f' % (i, running_loss))
         print('Epoch : %d, train_eval_acc : %.4f, train_eval_loss: %.4f' % (i, train_eval_acc, train_eval_loss))
         print('Epoch : %d, test_acc : %.4f, test_loss: %.4f' % (i, test_acc, test_loss))
+        print('Epoch : %d, acc_gap : %.4f, loss_gap: %.4f' % (i, acc_gap, loss_gap))
 
         torch.save({
             'model_state_dict': res18.state_dict(),
             'fc_state_dict': fc.state_dict(),
             'epoch': i,
             'test_acc': test_acc
-        }, f'checkpoints/epoch_{i}_acc_{test_acc:.4f}.pth')
+        }, f'../checkpoints/epoch_{i}_acc_{test_acc:.4f}.pth')
+
+        torch.save({
+            'model_state_dict': res18.state_dict(),
+            'fc_state_dict': fc.state_dict(),
+            'epoch': i,
+            'test_acc': test_acc
+        }, '../checkpoints/last_model.pth')
 
         if test_acc > best_acc:
             best_acc = test_acc
             best_epoch = i
 
-        # Criteria to save the trained model
-        if best_acc >= 0.888:
             torch.save({
                 'model_state_dict': res18.state_dict(),
                 'fc_state_dict': fc.state_dict(),
                 'epoch': i,
                 'test_acc': test_acc
-            }, '../best_model/best_model.pth')
+            }, '../checkpoints/best_model.pth')
 
             print('Best model updated.')
 
+        with open(metrics_path, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                i,
+                running_loss,
+                train_eval_loss,
+                train_eval_acc,
+                test_loss,
+                test_acc,
+                acc_gap,
+                loss_gap,
+                current_lr,
+                epoch_time,
+                best_acc
+            ])
+
     print('best acc: ', best_acc, 'best epoch: ', best_epoch)
+
+    final_test_loss, final_test_acc, y_true, y_pred = evaluate_with_predictions(res18, fc, test_loader, device)
+
+    cm = confusion_matrix(y_true, y_pred)
+    with open("../reports/test_confusion_matrix.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(cm.tolist())
+
+    report = classification_report(y_true, y_pred, digits=4)
+    with open("../reports/test_classification_report.txt", "w") as f:
+        f.write(report)
+
+    precision, recall, f1, support = precision_recall_fscore_support(
+        y_true, y_pred, average=None, zero_division=0
+    )
+
+    with open("../reports/per_class_metrics.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["class_id", "precision", "recall", "f1_score", "support"])
+        for class_id in range(len(precision)):
+            writer.writerow([class_id, precision[class_id], recall[class_id], f1[class_id], support[class_id]])
+
+    with open("../reports/summary.txt", "w") as f:
+        f.write(f"Best epoch: {best_epoch}\n")
+        f.write(f"Best test accuracy: {best_acc:.6f}\n")
+        f.write(f"Final test accuracy: {final_test_acc:.6f}\n")
+        f.write(f"Final test loss: {final_test_loss:.6f}\n")
 
 
 if __name__ == '__main__':
