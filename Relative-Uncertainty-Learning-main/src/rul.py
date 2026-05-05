@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import torch.nn as nn
-from resnet import *
+from resnet18 import *
 from utils import *
+from resnet50 import ResNet50
 
 class Flatten(nn.Module):
     def forward(self, input):
@@ -49,4 +50,95 @@ class res18feature(nn.Module):
         else:
             x = self.features(x)
             output = self.mu(x)
+            return output
+
+
+class res50feature(nn.Module):
+
+    def __init__(self, args, pretrained=False, num_classes=7, drop_rate=0.4, out_dim=64):
+
+        super(res50feature, self).__init__()
+
+        res50 = ResNet50(output_dim=1000)
+
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        if pretrained:
+
+            checkpoint = torch.load(args.pretrained_backbone_path, map_location=device)
+
+            if 'state_dict' in checkpoint:
+
+                state_dict = checkpoint['state_dict']
+
+            else:
+
+                state_dict = checkpoint
+
+            res50.load_state_dict(state_dict, strict=False)
+
+        self.drop_rate = drop_rate
+
+        self.out_dim = out_dim
+
+        self.features = nn.Sequential(*list(res50.children())[:-2])
+
+        self.mu = nn.Sequential(
+
+            nn.BatchNorm2d(2048, eps=2e-5, affine=False),
+
+            nn.Dropout(p=self.drop_rate),
+
+            Flatten(),
+
+            nn.Linear(2048 * 7 * 7, self.out_dim),
+
+            nn.BatchNorm1d(self.out_dim, eps=2e-5)
+
+        )
+
+        self.log_var = nn.Sequential(
+
+            nn.BatchNorm2d(2048, eps=2e-5, affine=False),
+
+            nn.Dropout(p=self.drop_rate),
+
+            Flatten(),
+
+            nn.Linear(2048 * 7 * 7, self.out_dim),
+
+            nn.BatchNorm1d(self.out_dim, eps=2e-5)
+
+        )
+
+    def forward(self, x, target=None, phase='train'):
+
+        if phase == 'train':
+
+            x = self.features(x)
+
+            mu = self.mu(x)
+
+            logvar = self.log_var(x)
+
+            mixed_x, y_a, y_b, att1, att2 = mixup_data(
+
+                mu,
+
+                target,
+
+                logvar.exp().mean(dim=1, keepdim=True),
+
+                use_cuda=torch.cuda.is_available()
+
+            )
+
+            return mixed_x, y_a, y_b, att1, att2
+
+        else:
+
+            x = self.features(x)
+
+            output = self.mu(x)
+
             return output
