@@ -8,7 +8,7 @@ import torch.nn as nn
 from torchvision import transforms
 from tqdm import tqdm
 from dataset import RafDataset
-from rul import res18feature
+from rul import res18feature, res50feature
 from utils import *
 
 from sklearn.metrics import (
@@ -77,6 +77,7 @@ def train():
         ])
 
     res18 = res18feature(args)
+    res50 = res50feature(args)
     fc = nn.Linear(args.out_dimension, 7)
 
     data_transforms = transforms.Compose([
