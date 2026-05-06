@@ -8,7 +8,7 @@ import torch.nn as nn
 from torchvision import transforms
 from tqdm import tqdm
 from dataset import RafDataset
-from rul import res18feature, res50feature
+from rul import res50feature
 from utils import *
 
 from sklearn.metrics import (
@@ -30,13 +30,14 @@ parser.add_argument('--test_label_path', type=str, default='../../DATASET/test_l
                     help='Path to test_labels.csv')
 
 parser.add_argument('--pretrained_backbone_path', type=str,
-                    default='../pretrained_model/resnet18_msceleb.pth',
+                    default='../pretrained_model/resnet50.pth',
                     help='Path to pretrained backbone weights')
+
 
 parser.add_argument('--workers', type=int, default=4,
                     help='Number of dataloader workers')
 
-parser.add_argument('--batch_size', type=int, default=64,
+parser.add_argument('--batch_size', type=int, default=32,
                     help='Batch size')
 
 parser.add_argument('--epochs', type=int, default=60,
@@ -53,8 +54,8 @@ def train():
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    os.makedirs("../checkpoints", exist_ok=True)
-    os.makedirs("../reports", exist_ok=True)
+    os.makedirs("../checkpoints_res50", exist_ok=True)
+    os.makedirs("../reports_res50", exist_ok=True)
 
     with open("../reports/config.json", "w") as f:
         json.dump(vars(args), f, indent=4)
@@ -76,8 +77,7 @@ def train():
             "best_test_acc_so_far"
         ])
 
-    res18 = res18feature(args)
-    res50 = res50feature(args)
+    model = res50feature(args, pretrained=False)
     fc = nn.Linear(args.out_dimension, 7)
 
     data_transforms = transforms.Compose([
@@ -125,11 +125,11 @@ def train():
         pin_memory=(device.type == 'cuda')
     )
 
-    res18 = res18.to(device)
+    model = model.to(device)
     fc = fc.to(device)
 
     optimizer = torch.optim.Adam([
-        {'params': res18.parameters()},
+        {'params': model.parameters()},
         {'params': fc.parameters(), 'lr': 0.002}
     ], lr=0.0002, weight_decay=1e-4)
 
@@ -143,7 +143,7 @@ def train():
         running_loss = 0.0
         iter_cnt = 0
 
-        res18.train()
+        model.train()
         fc.train()
 
         train_bar = tqdm(train_loader, desc=f"Epoch {i}/{args.epochs} [Train]")
@@ -153,7 +153,7 @@ def train():
 
             optimizer.zero_grad()
 
-            mixed_x, y_a, y_b, att1, att2 = res18(imgs, labels, phase='train')
+            mixed_x, y_a, y_b, att1, att2 = model(imgs, labels, phase='train')
             outputs = fc(mixed_x)
 
             criterion = nn.CrossEntropyLoss()
@@ -170,8 +170,8 @@ def train():
         scheduler.step()
         running_loss /= iter_cnt
 
-        train_eval_loss, train_eval_acc = evaluate(res18, fc, train_eval_loader, device)
-        test_loss, test_acc = evaluate(res18, fc, test_loader, device)
+        train_eval_loss, train_eval_acc = evaluate(model, fc, train_eval_loader, device)
+        test_loss, test_acc = evaluate(model, fc, test_loader, device)
 
         acc_gap = train_eval_acc - test_acc
         loss_gap = test_loss - train_eval_loss
@@ -184,14 +184,14 @@ def train():
         print('Epoch : %d, acc_gap : %.4f, loss_gap: %.4f' % (i, acc_gap, loss_gap))
 
         torch.save({
-            'model_state_dict': res18.state_dict(),
+            'model_state_dict': model.state_dict(),
             'fc_state_dict': fc.state_dict(),
             'epoch': i,
             'test_acc': test_acc
         }, f'../checkpoints/epoch_{i}_acc_{test_acc:.4f}.pth')
 
         torch.save({
-            'model_state_dict': res18.state_dict(),
+            'model_state_dict': model.state_dict(),
             'fc_state_dict': fc.state_dict(),
             'epoch': i,
             'test_acc': test_acc
@@ -202,7 +202,7 @@ def train():
             best_epoch = i
 
             torch.save({
-                'model_state_dict': res18.state_dict(),
+                'model_state_dict': model.state_dict(),
                 'fc_state_dict': fc.state_dict(),
                 'epoch': i,
                 'test_acc': test_acc
@@ -228,7 +228,7 @@ def train():
 
     print('best acc: ', best_acc, 'best epoch: ', best_epoch)
 
-    final_test_loss, final_test_acc, y_true, y_pred = evaluate_with_predictions(res18, fc, test_loader, device)
+    final_test_loss, final_test_acc, y_true, y_pred = evaluate_with_predictions(model, fc, test_loader, device)
 
     cm = confusion_matrix(y_true, y_pred)
     with open("../reports/test_confusion_matrix.csv", "w", newline="") as f:
