@@ -77,7 +77,7 @@ def train():
             "best_test_acc_so_far"
         ])
 
-    model = res50feature(args, pretrained=False)
+    model = res50feature(args, pretrained=True)
     fc = nn.Linear(args.out_dimension, 7)
 
     data_transforms = transforms.Compose([
