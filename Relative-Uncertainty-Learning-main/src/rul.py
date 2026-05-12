@@ -65,7 +65,7 @@ class res50feature(nn.Module):
 
         if pretrained:
 
-            checkpoint = torch.load(args.pretrained_backbone_path, map_location=device)
+            checkpoint = torch.load(args.pretrained_backbone_path, map_location='cpu')
 
             if 'state_dict' in checkpoint:
 
