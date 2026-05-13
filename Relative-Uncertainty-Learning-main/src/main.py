@@ -135,6 +135,46 @@ def train():
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
+    hyperparams_report = {
+        "args": vars(args),
+        "device": str(device),
+
+        "model": {
+            "name": model.__class__.__name__,
+            "pretrained_backbone_path": args.pretrained_backbone_path,
+            "out_dimension": args.out_dimension
+        },
+
+        "optimizer": {
+            "name": optimizer.__class__.__name__,
+            "defaults": optimizer.defaults,
+            "param_groups": [
+                {
+                    "lr": group["lr"],
+                    "weight_decay": group["weight_decay"],
+                    "betas": group.get("betas", None),
+                    "eps": group.get("eps", None)
+                }
+                for group in optimizer.param_groups
+            ]
+        },
+
+        "scheduler": {
+            "name": scheduler.__class__.__name__,
+            "gamma": scheduler.gamma
+        },
+
+        "criterion": {
+            "name": nn.CrossEntropyLoss().__class__.__name__
+        },
+
+        "transforms_train": str(data_transforms),
+        "transforms_val": str(data_transforms_val)
+}
+
+    with open("../reports_res50/hyperparameters.json", "w") as f:
+        json.dump(hyperparams_report, f, indent=4, default=str)
+
     best_acc = 0.0
     best_epoch = 0
 
@@ -243,7 +283,7 @@ def train():
         y_true, y_pred, average=None, zero_division=0
     )
 
-    with open("../_res50/per_class_metrics.csv", "w", newline="") as f:
+    with open("../reports_res50/per_class_metrics.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["class_id", "precision", "recall", "f1_score", "support"])
         for class_id in range(len(precision)):
@@ -258,3 +298,6 @@ def train():
 
 if __name__ == '__main__':
     train()
+
+
+
