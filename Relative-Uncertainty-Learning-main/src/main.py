@@ -57,10 +57,10 @@ def train():
     os.makedirs("../checkpoints_res50", exist_ok=True)
     os.makedirs("../reports_res50", exist_ok=True)
 
-    with open("../reports/config.json", "w") as f:
+    with open("../reports_res50/config.json", "w") as f:
         json.dump(vars(args), f, indent=4)
 
-    metrics_path = "../reports/metrics.csv"
+    metrics_path = "../reports_res50/metrics.csv"
     with open(metrics_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -231,25 +231,25 @@ def train():
     final_test_loss, final_test_acc, y_true, y_pred = evaluate_with_predictions(model, fc, test_loader, device)
 
     cm = confusion_matrix(y_true, y_pred)
-    with open("../reports/test_confusion_matrix.csv", "w", newline="") as f:
+    with open("../reports_res50/test_confusion_matrix.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerows(cm.tolist())
 
     report = classification_report(y_true, y_pred, digits=4)
-    with open("../reports/test_classification_report.txt", "w") as f:
+    with open("../reports_res50/test_classification_report.txt", "w") as f:
         f.write(report)
 
     precision, recall, f1, support = precision_recall_fscore_support(
         y_true, y_pred, average=None, zero_division=0
     )
 
-    with open("../reports/per_class_metrics.csv", "w", newline="") as f:
+    with open("../_res50/per_class_metrics.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["class_id", "precision", "recall", "f1_score", "support"])
         for class_id in range(len(precision)):
             writer.writerow([class_id, precision[class_id], recall[class_id], f1[class_id], support[class_id]])
 
-    with open("../reports/summary.txt", "w") as f:
+    with open("../reports_res50/summary.txt", "w") as f:
         f.write(f"Best epoch: {best_epoch}\n")
         f.write(f"Best test accuracy: {best_acc:.6f}\n")
         f.write(f"Final test accuracy: {final_test_acc:.6f}\n")
