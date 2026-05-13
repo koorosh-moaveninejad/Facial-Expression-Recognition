@@ -32,7 +32,13 @@ parser.add_argument('--test_label_path', type=str, default='../../DATASET/test_l
 parser.add_argument('--pretrained_backbone_path', type=str,
                     default='../pretrained_model/resnet50.pth',
                     help='Path to pretrained backbone weights')
+parser.add_argument('--lr', type=float, default=0.0002)
 
+parser.add_argument('--fc_lr', type=float, default=0.002)
+
+parser.add_argument('--weight_decay', type=float, default=1e-4)
+
+parser.add_argument('--gamma', type=float, default=0.9)
 
 parser.add_argument('--workers', type=int, default=4,
                     help='Number of dataloader workers')
@@ -130,10 +136,13 @@ def train():
 
     optimizer = torch.optim.Adam([
         {'params': model.parameters()},
-        {'params': fc.parameters(), 'lr': 0.002}
-    ], lr=0.0002, weight_decay=1e-4)
+        {'params': fc.parameters(), 'lr': args.fc_lr}
+    ], lr=args.lr, weight_decay=args.weight_decay)
 
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(
+        optimizer,
+        gamma=args.gamma
+    )
 
     hyperparams_report = {
         "args": vars(args),
