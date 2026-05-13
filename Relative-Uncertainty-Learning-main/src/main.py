@@ -188,14 +188,14 @@ def train():
             'fc_state_dict': fc.state_dict(),
             'epoch': i,
             'test_acc': test_acc
-        }, f'../checkpoints/epoch_{i}_acc_{test_acc:.4f}.pth')
+        }, f'../checkpoints_res50/epoch_{i}_acc_{test_acc:.4f}.pth')
 
         torch.save({
             'model_state_dict': model.state_dict(),
             'fc_state_dict': fc.state_dict(),
             'epoch': i,
             'test_acc': test_acc
-        }, '../checkpoints/last_model.pth')
+        }, '../checkpoints_res50/last_model.pth')
 
         if test_acc > best_acc:
             best_acc = test_acc
@@ -206,7 +206,7 @@ def train():
                 'fc_state_dict': fc.state_dict(),
                 'epoch': i,
                 'test_acc': test_acc
-            }, '../checkpoints/best_model.pth')
+            }, '../checkpoints_res50/best_model.pth')
 
             print('Best model updated.')
 
