@@ -81,13 +81,21 @@ def train():
     fc = nn.Linear(args.out_dimension, 7)
 
     data_transforms = transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225]),
-        transforms.RandomErasing(scale=(0.02, 0.25))
-    ])
+            transforms.ToPILImage(),
+            transforms.Resize((224, 224)),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomRotation(10),
+            transforms.ColorJitter(
+                brightness=0.2,
+                contrast=0.2,
+                saturation=0.2,
+                hue=0.05
+            ),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                std=[0.229, 0.224, 0.225]),
+            transforms.RandomErasing(scale=(0.02, 0.30), p=0.5)
+        ])
 
     data_transforms_val = transforms.Compose([
         transforms.ToPILImage(),
@@ -130,8 +138,8 @@ def train():
 
     optimizer = torch.optim.Adam([
         {'params': res18.parameters()},
-        {'params': fc.parameters(), 'lr': 0.002}
-    ], lr=0.0002, weight_decay=1e-4)
+        {'params': fc.parameters(), 'lr': 0.001}
+    ], lr=0.00005, weight_decay=1e-3)
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
@@ -156,7 +164,7 @@ def train():
             mixed_x, y_a, y_b, att1, att2 = res18(imgs, labels, phase='train')
             outputs = fc(mixed_x)
 
-            criterion = nn.CrossEntropyLoss()
+            criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
             loss_func = mixup_criterion(y_a, y_b)
             loss = loss_func(criterion, outputs)
 
