@@ -1,0 +1,14 @@
+{
+    "raf_path": "../../DATASET",
+    "train_label_path": "../../DATASET/train_labels.csv",
+    "test_label_path": "../../DATASET/test_labels.csv",
+    "pretrained_backbone_path": "../pretrained_model/resnet50.pth",
+    "lr": 5e-05,
+    "fc_lr": 0.002,
+    "weight_decay": 0.001,
+    "gamma": 0.9,
+    "workers": 4,
+    "batch_size": 32,
+    "epochs": 30,
+    "out_dimension": 64
+}

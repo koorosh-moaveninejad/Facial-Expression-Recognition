@@ -16,3 +16,7 @@
 *.pyc
 .DS_Store
 Thumbs.db
+debug.py
+/DATASET
+/DATASET_RAFDB
+*.jpg

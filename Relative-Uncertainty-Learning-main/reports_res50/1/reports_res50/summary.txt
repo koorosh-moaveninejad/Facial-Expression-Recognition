@@ -1,0 +1,4 @@
+Best epoch: 44
+Best test accuracy: 0.869948
+Final test accuracy: 0.865059
+Final test loss: 0.653799

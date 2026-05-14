@@ -1,0 +1,69 @@
+{
+    "args": {
+        "raf_path": "../../DATASET",
+        "train_label_path": "../../DATASET/train_labels.csv",
+        "test_label_path": "../../DATASET/test_labels.csv",
+        "pretrained_backbone_path": "../pretrained_model/resnet50.pth",
+        "lr": 5e-05,
+        "fc_lr": 0.002,
+        "weight_decay": 0.001,
+        "gamma": 0.9,
+        "workers": 4,
+        "batch_size": 32,
+        "epochs": 30,
+        "out_dimension": 64
+    },
+    "device": "cuda",
+    "model": {
+        "name": "res50feature",
+        "pretrained_backbone_path": "../pretrained_model/resnet50.pth",
+        "out_dimension": 64
+    },
+    "optimizer": {
+        "name": "Adam",
+        "defaults": {
+            "lr": 5e-05,
+            "betas": [
+                0.9,
+                0.999
+            ],
+            "eps": 1e-08,
+            "weight_decay": 0.001,
+            "amsgrad": false,
+            "maximize": false,
+            "foreach": null,
+            "capturable": false,
+            "differentiable": false,
+            "fused": null
+        },
+        "param_groups": [
+            {
+                "lr": 5e-05,
+                "weight_decay": 0.001,
+                "betas": [
+                    0.9,
+                    0.999
+                ],
+                "eps": 1e-08
+            },
+            {
+                "lr": 0.002,
+                "weight_decay": 0.001,
+                "betas": [
+                    0.9,
+                    0.999
+                ],
+                "eps": 1e-08
+            }
+        ]
+    },
+    "scheduler": {
+        "name": "ExponentialLR",
+        "gamma": 0.9
+    },
+    "criterion": {
+        "name": "CrossEntropyLoss"
+    },
+    "transforms_train": "Compose(\n    ToPILImage()\n    Resize(size=(224, 224), interpolation=bilinear, max_size=None, antialias=warn)\n    RandomHorizontalFlip(p=0.5)\n    RandomRotation(degrees=[-10.0, 10.0], interpolation=nearest, expand=False, fill=0)\n    ColorJitter(brightness=(0.8, 1.2), contrast=(0.8, 1.2), saturation=(0.8, 1.2), hue=(-0.05, 0.05))\n    ToTensor()\n    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])\n    RandomErasing(p=0.5, scale=(0.02, 0.3), ratio=(0.3, 3.3), value=0, inplace=False)\n)",
+    "transforms_val": "Compose(\n    ToPILImage()\n    Resize(size=(224, 224), interpolation=bilinear, max_size=None, antialias=warn)\n    ToTensor()\n    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])\n)"
+}

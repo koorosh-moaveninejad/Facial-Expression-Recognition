@@ -1,0 +1,5 @@
+ResNet-50 achieved around 87% test accuracy, but showed clear overfitting with a train-test accuracy gap of about 12–13%.
+
+Added augmentation
+Added label smoothing
+Lower lr
