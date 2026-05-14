@@ -23,16 +23,23 @@ from sklearn.metrics import (
     accuracy_score
 )
 
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--raf_path', type=str, default='DATASET',
-                    help='Root path of dataset folder')
+# parser.add_argument('--raf_path', type=str, default='FERplus',
+#                     help='Root path of dataset folder')
 
-parser.add_argument('--train_label_path', type=str, default='DATASET/train_labels.csv',
-                    help='Path to train_labels.csv')
+# parser.add_argument('--train_label_path', type=str, default='FERplus/train_labels.csv',
+#                     help='Path to train_labels.csv')
 
-parser.add_argument('--test_label_path', type=str, default='DATASET/test_labels.csv',
-                    help='Path to test_labels.csv')
+# parser.add_argument('--test_label_path', type=str, default='FERplus/test_labels.csv',
+#                     help='Path to test_labels.csv')
+parser.add_argument('--raf_path', type=str, 
+    default=r'F:\Master\Computer Vision\Group Project\RUL\src_code\version 3 ( FERplus dataset)\FERplus', help='Root path of dataset folder')
+parser.add_argument('--train_label_path', type=str, 
+    default=r'F:\Master\Computer Vision\Group Project\RUL\src_code\version 3 ( FERplus dataset)\FERplus\train_labels.csv', help='Path to train_labels.csv')
+parser.add_argument('--test_label_path', type=str, 
+    default=r'F:\Master\Computer Vision\Group Project\RUL\src_code\version 3 ( FERplus dataset)\FERplus\test_labels.csv', help='Path to test_labels.csv')
 
 parser.add_argument('--pretrained_backbone_path', type=str,
                     default='resnet18_msceleb.pth',
@@ -83,12 +90,13 @@ def train():
         ])
 
     res18 = res18feature(args) #RUL Model ( ResNet-18 backbone + two  branches)
-    fc = nn.Linear(args.out_dimension, 7)  #Final Classifier ( linear layer): 64 dim -> 7 emotions
+    fc = nn.Linear(args.out_dimension, 8)  #Final Classifier ( linear layer): 64 dim -> 7 emotions
 
     #Data Transforms for training ( using RandomErasing method)
     data_transforms = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225]),

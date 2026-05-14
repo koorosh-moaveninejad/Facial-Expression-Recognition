@@ -22,11 +22,7 @@ class RafDataset(data.Dataset):
 
         df = pd.read_csv(csv_path)
 
-        # Expected CSV columns:
-        # image_name,label_index
-        # Example:
-        # train_00001_aligned.jpg,4
-        # test_00001_aligned.jpg,2
+        # Define column names first — before using them
         image_col = 'image'
         label_col = 'label'
 
@@ -36,19 +32,19 @@ class RafDataset(data.Dataset):
                 f"Found columns: {list(df.columns)}"
             )
 
-        # Convert labels from 1..7 to 0..6 for PyTorch CrossEntropyLoss
-        self.label = df[label_col].astype(int).values - 1
-        self.file_paths = []
+        if 'folder' in df.columns:
+            folder_names = df['folder'].values
+        else:
+            folder_names = df[label_col].astype(int).values  # fallback for numeric folders
 
+        self.label = df[label_col].astype(int).values
+        self.file_paths = []
         self.aug_func = [filp_image, add_g]
 
-        for img_name, lbl in zip(df[image_col].values, df[label_col].values):
-            img_name = str(img_name)
-            class_folder = str(int(lbl))   # folder names are 1,2,...,7
-            file_path = os.path.join(self.raf_path, split_dir, class_folder, img_name)
+        for img_name, folder_name in zip(df[image_col].values, folder_names):
+            file_path = os.path.join(self.raf_path, split_dir, str(folder_name), str(img_name))
             self.file_paths.append(file_path)
 
-        #  safety check
         missing = [p for p in self.file_paths if not os.path.exists(p)]
         if len(missing) > 0:
             raise FileNotFoundError(
@@ -66,7 +62,12 @@ class RafDataset(data.Dataset):
         if image is None:
             raise FileNotFoundError(f"Could not read image: {self.file_paths[idx]}")
 
-        image = image[:, :, ::-1]  # BGR -> RGB
+        if len(image.shape) == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        elif image.shape[2] == 1:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        else:
+            image = image[:, :, ::-1]  # BGR -> RGB
 
         if self.phase == 'train':
             if self.basic_aug and random.uniform(0, 1) > 0.5:
