@@ -8,7 +8,7 @@ import torch.nn as nn
 from torchvision import transforms
 from tqdm import tqdm
 from dataset import RafDataset
-from rul import res18feature, res50feature
+from rul import res18feature
 from utils import *
 
 from sklearn.metrics import (
@@ -45,6 +45,9 @@ parser.add_argument('--epochs', type=int, default=60,
 parser.add_argument('--out_dimension', type=int, default=64,
                     help='Feature dimension')
 
+parser.add_argument('--val_label_path', type=str, default='../../DATASET/validation_labels.csv',
+                    help='Path to validation_labels.csv')
+
 args = parser.parse_args()
 
 
@@ -67,18 +70,17 @@ def train():
             "train_loss",
             "train_eval_loss",
             "train_eval_acc",
-            "test_loss",
-            "test_acc",
+            "val_loss",
+            "val_acc",
             "acc_gap",
             "loss_gap",
             "lr",
             "epoch_time_sec",
-            "best_test_acc_so_far"
+            "best_val_acc_so_far"
         ])
 
     res18 = res18feature(args)
-    res50 = res50feature(args)
-    fc = nn.Linear(args.out_dimension, 7)
+    fc = nn.Linear(args.out_dimension, 8)
 
     data_transforms = transforms.Compose([
             transforms.ToPILImage(),
@@ -107,6 +109,7 @@ def train():
 
     train_dataset = RafDataset(args, phase='train', transform=data_transforms)
     train_dataset_eval = RafDataset(args, phase='train', basic_aug=False, transform=data_transforms_val)
+    val_dataset = RafDataset(args, phase='val', basic_aug=False, transform=data_transforms_val)
     test_dataset = RafDataset(args, phase='test', transform=data_transforms_val)
 
     train_loader = torch.utils.data.DataLoader(
@@ -124,6 +127,14 @@ def train():
         num_workers=args.workers,
         pin_memory=(device.type == 'cuda')
     )
+
+    val_loader = torch.utils.data.DataLoader(
+    val_dataset,
+    batch_size=args.batch_size,
+    shuffle=False,
+    num_workers=args.workers,
+    pin_memory=(device.type == 'cuda')
+)
 
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
@@ -179,41 +190,41 @@ def train():
         running_loss /= iter_cnt
 
         train_eval_loss, train_eval_acc = evaluate(res18, fc, train_eval_loader, device)
-        test_loss, test_acc = evaluate(res18, fc, test_loader, device)
+        val_loss, val_acc = evaluate(res18, fc, val_loader, device)
 
-        acc_gap = train_eval_acc - test_acc
-        loss_gap = test_loss - train_eval_loss
+        acc_gap = train_eval_acc - val_acc
+        loss_gap = val_loss - train_eval_loss
         current_lr = optimizer.param_groups[0]['lr']
         epoch_time = time.time() - epoch_start
 
         print('Epoch : %d, train_loss: %.4f' % (i, running_loss))
         print('Epoch : %d, train_eval_acc : %.4f, train_eval_loss: %.4f' % (i, train_eval_acc, train_eval_loss))
-        print('Epoch : %d, test_acc : %.4f, test_loss: %.4f' % (i, test_acc, test_loss))
+        print('Epoch : %d, val_acc : %.4f, val_loss: %.4f' % (i, val_acc, val_loss))
         print('Epoch : %d, acc_gap : %.4f, loss_gap: %.4f' % (i, acc_gap, loss_gap))
 
         torch.save({
             'model_state_dict': res18.state_dict(),
             'fc_state_dict': fc.state_dict(),
             'epoch': i,
-            'test_acc': test_acc
-        }, f'../checkpoints/epoch_{i}_acc_{test_acc:.4f}.pth')
+            'val_acc': val_acc
+        }, f'../checkpoints/epoch_{i}_val_acc_{val_acc:.4f}.pth')
 
         torch.save({
             'model_state_dict': res18.state_dict(),
             'fc_state_dict': fc.state_dict(),
             'epoch': i,
-            'test_acc': test_acc
+            'val_acc': val_acc
         }, '../checkpoints/last_model.pth')
 
-        if test_acc > best_acc:
-            best_acc = test_acc
+        if val_acc > best_acc:
+            best_acc = val_acc
             best_epoch = i
 
             torch.save({
                 'model_state_dict': res18.state_dict(),
                 'fc_state_dict': fc.state_dict(),
                 'epoch': i,
-                'test_acc': test_acc
+                'val_acc': val_acc
             }, '../checkpoints/best_model.pth')
 
             print('Best model updated.')
@@ -225,8 +236,8 @@ def train():
                 running_loss,
                 train_eval_loss,
                 train_eval_acc,
-                test_loss,
-                test_acc,
+                val_loss,
+                val_acc,
                 acc_gap,
                 loss_gap,
                 current_lr,
@@ -259,7 +270,7 @@ def train():
 
     with open("../reports/summary.txt", "w") as f:
         f.write(f"Best epoch: {best_epoch}\n")
-        f.write(f"Best test accuracy: {best_acc:.6f}\n")
+        f.write(f"Best validation accuracy: {best_acc:.6f}\n")
         f.write(f"Final test accuracy: {final_test_acc:.6f}\n")
         f.write(f"Final test loss: {final_test_loss:.6f}\n")
 

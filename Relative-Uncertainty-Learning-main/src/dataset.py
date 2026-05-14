@@ -16,9 +16,17 @@ class RafDataset(data.Dataset):
         if phase == 'train':
             csv_path = args.train_label_path
             split_dir = 'train'
-        else:
+
+        elif phase == 'val':
+            csv_path = args.val_label_path
+            split_dir = 'validation'
+
+        elif phase == 'test':
             csv_path = args.test_label_path
             split_dir = 'test'
+
+        else:
+            raise ValueError(f"Unknown phase: {phase}")
 
         df = pd.read_csv(csv_path)
 
@@ -28,6 +36,7 @@ class RafDataset(data.Dataset):
         # train_00001_aligned.jpg,4
         # test_00001_aligned.jpg,2
         image_col = 'image'
+        folder_col = 'folder'
         label_col = 'label'
 
         if image_col not in df.columns or label_col not in df.columns:
@@ -36,25 +45,30 @@ class RafDataset(data.Dataset):
                 f"Found columns: {list(df.columns)}"
             )
 
-        # Convert labels from 1..7 to 0..6 for PyTorch CrossEntropyLoss
+     
         self.label = df[label_col].astype(int).values - 1
         self.file_paths = []
 
         self.aug_func = [filp_image, add_g]
 
-        for img_name, lbl in zip(df[image_col].values, df[label_col].values):
-            img_name = str(img_name)
-            class_folder = str(int(lbl))   # folder names are 1,2,...,7
-            file_path = os.path.join(self.raf_path, split_dir, class_folder, img_name)
-            self.file_paths.append(file_path)
 
-        #  safety check
-        missing = [p for p in self.file_paths if not os.path.exists(p)]
-        if len(missing) > 0:
-            raise FileNotFoundError(
-                f"{len(missing)} image files were not found. "
-                f"First missing file: {missing[0]}"
+        for _, row in df.iterrows():
+
+            img_name = str(row[image_col])
+
+            if folder_col in df.columns:
+                class_folder = str(row[folder_col])
+            else:
+                class_folder = str(int(row[label_col]))
+
+            file_path = os.path.join(
+                self.raf_path,
+                split_dir,
+                class_folder,
+                img_name
             )
+          
+            self.file_paths.append(file_path)
 
     def __len__(self):
         return len(self.file_paths)
