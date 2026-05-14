@@ -23,6 +23,8 @@ from sklearn.metrics import (
     accuracy_score
 )
 
+
+
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 parser = argparse.ArgumentParser()
 
@@ -34,12 +36,21 @@ parser = argparse.ArgumentParser()
 
 # parser.add_argument('--test_label_path', type=str, default='FERplus/test_labels.csv',
 #                     help='Path to test_labels.csv')
-parser.add_argument('--raf_path', type=str, 
-    default=r'F:\Master\Computer Vision\Group Project\RUL\src_code\version 3 ( FERplus dataset)\FERplus', help='Root path of dataset folder')
-parser.add_argument('--train_label_path', type=str, 
-    default=r'F:\Master\Computer Vision\Group Project\RUL\src_code\version 3 ( FERplus dataset)\FERplus\train_labels.csv', help='Path to train_labels.csv')
-parser.add_argument('--test_label_path', type=str, 
-    default=r'F:\Master\Computer Vision\Group Project\RUL\src_code\version 3 ( FERplus dataset)\FERplus\test_labels.csv', help='Path to test_labels.csv')
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FERPLUS_DIR = os.path.join(BASE_DIR, 'FERplus')
+
+parser.add_argument('--raf_path', type=str, default=FERPLUS_DIR)
+parser.add_argument('--train_label_path', type=str, default=os.path.join(FERPLUS_DIR, 'train_labels.csv'))
+parser.add_argument('--test_label_path', type=str, default=os.path.join(FERPLUS_DIR, 'test_labels.csv'))
+
+
+# parser.add_argument('--raf_path', type=str, 
+#     default=r'\FERplus', help='Root path of dataset folder')
+# parser.add_argument('--train_label_path', type=str, 
+#     default=r'FERplus\train_labels.csv', help='Path to train_labels.csv')
+# parser.add_argument('--test_label_path', type=str, 
+#     default=r'FERplus\test_labels.csv', help='Path to test_labels.csv')
 
 parser.add_argument('--pretrained_backbone_path', type=str,
                     default='resnet18_msceleb.pth',
