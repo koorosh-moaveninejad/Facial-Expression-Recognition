@@ -213,7 +213,7 @@ def train():
             mixed_x, y_a, y_b, att1, att2 = model(imgs, labels, phase='train')
             outputs = fc(mixed_x)
 
-            criterion = nn.CrossEntropyLoss()
+            criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
             loss_func = mixup_criterion(y_a, y_b)
             loss = loss_func(criterion, outputs)
 
