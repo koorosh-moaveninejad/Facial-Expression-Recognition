@@ -149,8 +149,8 @@ def train():
 
     optimizer = torch.optim.Adam([
         {'params': res18.parameters()},
-        {'params': fc.parameters(), 'lr': 0.001}
-    ], lr=0.00005, weight_decay=1e-3)
+        {'params': fc.parameters(), 'lr': 0.002}
+    ], lr=0.0002, weight_decay=1e-4)
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
