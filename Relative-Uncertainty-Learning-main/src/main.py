@@ -148,9 +148,9 @@ def train():
     fc = fc.to(device)
 
     optimizer = torch.optim.Adam([
-        {'params': res18.parameters()},
-        {'params': fc.parameters(), 'lr': 0.002}
-    ], lr=0.0002, weight_decay=1e-4)
+        {'params': res18.parameters(), 'lr': 0.00002},
+        {'params': fc.parameters(), 'lr': 0.0005}
+    ], weight_decay=1e-3)
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
@@ -175,7 +175,7 @@ def train():
             mixed_x, y_a, y_b, att1, att2 = res18(imgs, labels, phase='train')
             outputs = fc(mixed_x)
 
-            criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+            criterion = nn.CrossEntropyLoss(label_smoothing=0.2)
             loss_func = mixup_criterion(y_a, y_b)
             loss = loss_func(criterion, outputs)
 
