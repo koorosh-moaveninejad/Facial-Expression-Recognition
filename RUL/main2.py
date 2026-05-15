@@ -38,8 +38,8 @@ parser.add_argument('--test_label_path',  type=str, default=os.path.join(FERPLUS
 
 parser.add_argument('--pretrained_backbone_path', type=str, default='resnet18_msceleb.pth')
 parser.add_argument('--workers',       type=int, default=4)
-parser.add_argument('--batch_size',    type=int, default=16)
-parser.add_argument('--epochs',        type=int, default=5)
+parser.add_argument('--batch_size',    type=int, default=32)
+parser.add_argument('--epochs',        type=int, default=30)
 parser.add_argument('--out_dimension', type=int, default=64)
 
 # ── Experiment selector ────────────────────────────────────────────────────────
