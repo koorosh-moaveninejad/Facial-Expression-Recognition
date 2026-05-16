@@ -38,7 +38,8 @@ class res18feature(nn.Module):
             nn.Linear(512 * 7 * 7, self.out_dim),
             nn.BatchNorm1d(self.out_dim, eps=2e-5))
 
-    def forward(self, x, target, phase='train'):
+
+    def forward(self, x, target=None, phase='train'):
 
         if phase == 'train':
             x = self.features(x)
@@ -111,6 +112,7 @@ class res50feature(nn.Module):
 
         )
 
+   # FIXED: target defaults to None so evaluation doesn't require it
     def forward(self, x, target=None, phase='train'):
 
         if phase == 'train':

@@ -175,8 +175,11 @@ def train():
             mixed_x, y_a, y_b, att1, att2 = res18(imgs, labels, phase='train')
             outputs = fc(mixed_x)
 
-            criterion = nn.CrossEntropyLoss(label_smoothing=0.2)
-            loss_func = mixup_criterion(y_a, y_b)
+            # FIXED: Lowered label smoothing from 0.2 to 0.1 to prevent regularizer clashing
+            criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+            
+            # FIXED: Passed att1 and att2 to align the loss penalties with the image mixing rates
+            loss_func = mixup_criterion(y_a, y_b, att1, att2)
             loss = loss_func(criterion, outputs)
 
             loss.backward()
