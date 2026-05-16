@@ -36,8 +36,9 @@ parser.add_argument('--pretrained_backbone_path', type=str,
 parser.add_argument('--workers', type=int, default=4,
                     help='Number of dataloader workers')
 
-parser.add_argument('--batch_size', type=int, default=64,
-                    help='Batch size')
+# NOTE: Since you are splitting across 2 GPUs, you can safely double this from 64 to 128
+parser.add_argument('--batch_size', type=int, default=128,
+                    help='Batch size (Split evenly across both GPUs)')
 
 parser.add_argument('--epochs', type=int, default=60,
                     help='Number of epochs')
@@ -129,12 +130,12 @@ def train():
     )
 
     val_loader = torch.utils.data.DataLoader(
-    val_dataset,
-    batch_size=args.batch_size,
-    shuffle=False,
-    num_workers=args.workers,
-    pin_memory=(device.type == 'cuda')
-)
+        val_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=(device.type == 'cuda')
+    )
 
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
@@ -147,9 +148,19 @@ def train():
     res18 = res18.to(device)
     fc = fc.to(device)
 
+    # MULTI-GPU MODIFICATION: Wrap both execution sub-modules across available cores
+    if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+        print(f"Server configuration detected: Utilizing {torch.cuda.device_count()} GPU Cores.")
+        res18 = nn.DataParallel(res18)
+        fc = nn.DataParallel(fc)
+
+    # Compensate learning rate slightly if scaling effective batch size up
+    base_lr_res18 = 0.00002 if torch.cuda.device_count() <= 1 else 0.00004
+    base_lr_fc = 0.0005 if torch.cuda.device_count() <= 1 else 0.0008
+
     optimizer = torch.optim.Adam([
-        {'params': res18.parameters(), 'lr': 0.00002},
-        {'params': fc.parameters(), 'lr': 0.0005}
+        {'params': res18.parameters(), 'lr': base_lr_res18},
+        {'params': fc.parameters(), 'lr': base_lr_fc}
     ], weight_decay=1e-3)
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
@@ -165,20 +176,21 @@ def train():
         res18.train()
         fc.train()
 
-        train_bar = tqdm(train_loader, desc=f"Epoch {i}/{args.epochs} [Train]")
+        train_bar = tqdm(train_loader, desc=f"Epoch {i}/{args.epochs} [Train - 2x GPUs]")
         for batch_i, (imgs, labels, indexes) in enumerate(train_bar):
             imgs = imgs.to(device)
             labels = labels.to(device)
 
             optimizer.zero_grad()
 
+            # The DataParallel wrapper splits batches along dimension 0, computes forward passes,
+            # and automatically re-concatenates outputs here.
             mixed_x, y_a, y_b, att1, att2 = res18(imgs, labels, phase='train')
             outputs = fc(mixed_x)
 
-            # FIXED: Lowered label smoothing from 0.2 to 0.1 to prevent regularizer clashing
             criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
             
-            # FIXED: Passed att1 and att2 to align the loss penalties with the image mixing rates
+            # Loss calculations scale across combined attention weights
             loss_func = mixup_criterion(y_a, y_b, att1, att2)
             loss = loss_func(criterion, outputs)
 
@@ -205,16 +217,20 @@ def train():
         print('Epoch : %d, val_acc : %.4f, val_loss: %.4f' % (i, val_acc, val_loss))
         print('Epoch : %d, acc_gap : %.4f, loss_gap: %.4f' % (i, acc_gap, loss_gap))
 
+        # Helper method extracting raw state_dicts unwrapped if checkpoints need to run standalone later
+        def get_state_dict(m):
+            return m.module.state_dict() if isinstance(m, nn.DataParallel) else m.state_dict()
+
         torch.save({
-            'model_state_dict': res18.state_dict(),
-            'fc_state_dict': fc.state_dict(),
+            'model_state_dict': get_state_dict(res18),
+            'fc_state_dict': get_state_dict(fc),
             'epoch': i,
             'val_acc': val_acc
         }, f'../checkpoints/epoch_{i}_val_acc_{val_acc:.4f}.pth')
 
         torch.save({
-            'model_state_dict': res18.state_dict(),
-            'fc_state_dict': fc.state_dict(),
+            'model_state_dict': get_state_dict(res18),
+            'fc_state_dict': get_state_dict(fc),
             'epoch': i,
             'val_acc': val_acc
         }, '../checkpoints/last_model.pth')
@@ -224,8 +240,8 @@ def train():
             best_epoch = i
 
             torch.save({
-                'model_state_dict': res18.state_dict(),
-                'fc_state_dict': fc.state_dict(),
+                'model_state_dict': get_state_dict(res18),
+                'fc_state_dict': get_state_dict(fc),
                 'epoch': i,
                 'val_acc': val_acc
             }, '../checkpoints/best_model.pth')
