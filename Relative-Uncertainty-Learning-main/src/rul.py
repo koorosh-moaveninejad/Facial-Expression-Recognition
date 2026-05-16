@@ -10,7 +10,7 @@ class Flatten(nn.Module):
         return input.view(input.size(0), -1)
 
 class res18feature(nn.Module):
-    def __init__(self, args, pretrained=True, num_classes=7, drop_rate=0.4, out_dim=64):
+    def __init__(self, args, pretrained=True, num_classes=7, drop_rate=0.5, out_dim=64):
         super(res18feature, self).__init__()
 
         #'affectnet_baseline/resnet18_msceleb.pth'
