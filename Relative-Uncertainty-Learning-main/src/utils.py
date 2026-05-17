@@ -41,8 +41,14 @@ def mixup_data(x, y, att, use_cuda=True):
     return mixed_x, y_a, y_b, att1, att2
 
 #add-up loss
-def mixup_criterion(y_a, y_b):
-    return lambda criterion, pred:  0.5 *  criterion(pred, y_a) + 0.5 * criterion(pred, y_b)
+def mixup_criterion(y_a, y_b, att1, att2):
+    lam1 = att1.mean().item()
+    lam2 = att2.mean().item()
+
+    return lambda criterion, pred: (
+        lam1 * criterion(pred, y_a) +
+        lam2 * criterion(pred, y_b)
+    )
 
 
 def evaluate(model, fc, loader, device):
