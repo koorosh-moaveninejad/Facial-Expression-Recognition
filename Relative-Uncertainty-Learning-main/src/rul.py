@@ -19,7 +19,7 @@ class res18feature(nn.Module):
         msceleb_model = torch.load(args.pretrained_backbone_path, map_location=device)
         state_dict = msceleb_model['state_dict']
         res18.load_state_dict(state_dict, strict=False)
-
+        
         self.drop_rate = drop_rate
         self.out_dim = out_dim
         self.features = nn.Sequential(*list(res18.children())[:-2])
