@@ -16,9 +16,14 @@ class RafDataset(data.Dataset):
         if phase == 'train':
             csv_path = args.train_label_path
             split_dir = 'train'
-        else:
+        elif phase == 'val':
+            csv_path = args.val_label_path
+            split_dir = 'validation'
+        elif phase == 'test':
             csv_path = args.test_label_path
             split_dir = 'test'
+        else:
+            raise ValueError(f"Unknown phase: {phase}")
 
         df = pd.read_csv(csv_path)
 
